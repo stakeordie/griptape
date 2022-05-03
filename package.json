@@ -1,0 +1,35 @@
+{
+  "name": "griptape",
+  "version": "0.1.0",
+  "description": "Frontend framework for CosmWasm",
+  "main": "dist/index.js",
+  "types": "types/index.d.ts",
+  "files": [
+    "dist",
+    "types"
+  ],
+  "repository": "https://github.com/stakeordie/griptape",
+  "author": "Luis Espinoza <luis@stakeordie.com>",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "prettier": "prettier --ignore-path .gitignore --write \"**/*.+(js|ts|json)\""
+  },
+  "dependencies": {
+    "@cosmjs/cosmwasm-stargate": "^0.28.4",
+    "@cosmjs/math": "^0.28.4",
+    "@cosmjs/proto-signing": "^0.28.4"
+  },
+  "devDependencies": {
+    "@keplr-wallet/types": "^0.10.3",
+    "@types/jest": "^27.5.0",
+    "@typescript-eslint/eslint-plugin": "^5.22.0",
+    "@typescript-eslint/parser": "^5.22.0",
+    "eslint": "^8.14.0",
+    "jest": "^27.5.1",
+    "prettier": "^2.6.2",
+    "ts-jest": "^27.1.4",
+    "typescript": "^4.6.4"
+  }
+}
