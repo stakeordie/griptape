@@ -2,7 +2,7 @@ import {
   CosmWasmClient,
   SigningCosmWasmClient
 } from "@cosmjs/cosmwasm-stargate";
-import { OfflineSigner } from "@cosmjs/proto-signing";
+import { OfflineSigner, AccountData } from "@cosmjs/proto-signing";
 import { Keplr } from "@keplr-wallet/types";
 
 export interface Config {
@@ -11,23 +11,26 @@ export interface Config {
   prefix: string;
 }
 
-class AppContext {
+export class AppContext {
   config: Config;
   client: CosmWasmClient;
   signingClient?: SigningCosmWasmClient;
+  account?: AccountData;
 
   constructor(
     config: Config,
     client: CosmWasmClient,
-    signingClient?: SigningCosmWasmClient
+    signingClient?: SigningCosmWasmClient,
+    account?: AccountData
   ) {
     this.config = config;
     this.client = client;
     this.signingClient = signingClient;
+    this.account = account;
   }
 }
 
-export let appContext: AppContext;
+let appContext: AppContext | undefined;
 
 export async function initApp(
   config: Config,
@@ -38,7 +41,9 @@ export async function initApp(
   const client = await CosmWasmClient.connect(rpcEndpoint);
 
   let signingClient: SigningCosmWasmClient | undefined;
+  let account: AccountData | undefined;
   if (signer) {
+    account = (await signer.getAccounts())[0];
     signingClient = await SigningCosmWasmClient.connectWithSigner(
       rpcEndpoint,
       signer,
@@ -48,13 +53,24 @@ export async function initApp(
     );
   }
 
-  appContext = new AppContext(config, client, signingClient);
+  appContext = new AppContext(config, client, signingClient, account);
 }
 
-export async function initKeplr(): Promise<OfflineSigner | undefined> {
+export function useAppContext(): AppContext {
+  if (!appContext)
+    throw new Error(
+      "App context has not been initialized: have you execute `initApp`?"
+    );
+  return appContext;
+}
+
+export async function initKeplr({
+  chainId
+}: Config): Promise<OfflineSigner | undefined> {
   const keplr = await getKeplr();
   if (!keplr) return;
-  return keplr.getOfflineSignerAuto(appContext.config.chainId);
+  await keplr.enable(chainId);
+  return keplr.getOfflineSignerAuto(chainId);
 }
 
 async function getKeplr(): Promise<Keplr | undefined> {
