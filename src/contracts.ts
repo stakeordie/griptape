@@ -1,3 +1,4 @@
+import { Coin } from "@cosmjs/proto-signing";
 import { useAppContext } from "./bootstrap";
 
 export interface ContractContext {
@@ -8,7 +9,7 @@ export type ContractFunctionParams = Record<string, unknown>;
 
 export type ContractFunction = (
   context: ContractContext,
-  params: ContractFunctionParams
+  params?: ContractFunctionParams
 ) => Record<string, Record<string, unknown>>;
 
 export interface ContractDefinition {
@@ -19,7 +20,9 @@ export interface ContractDefinition {
 export type ContractProxyTarget = Record<string, ContractFunction>;
 
 export interface ContractExecutionOptions {
-  fee: number;
+  fee?: number;
+  memo?: string;
+  funds?: readonly Coin[];
 }
 
 export type BaseContract = {
@@ -120,7 +123,7 @@ export function createContractClient<T extends BaseContract>(
       return new Proxy<ContractFunction>(def[prop as string], {
         apply(fun, thisArg, argArray) {
           const context = getContractContext();
-          const args = [context, argArray[0]];
+          const args = [context, argArray[0] as ContractFunctionParams];
           const msg = Reflect.apply(fun, thisArg, args);
 
           const { client, signingClient } = useAppContext();
@@ -129,8 +132,15 @@ export function createContractClient<T extends BaseContract>(
             return client.queryContractSmart(at, msg);
           } else if (isMessage()) {
             if (!context.address) throw new Error("No address available");
-
-            return signingClient?.execute(context.address, at, msg, "auto");
+            const options: ContractExecutionOptions | undefined = argArray[1];
+            return signingClient?.execute(
+              context.address,
+              at,
+              msg,
+              options?.fee || "auto",
+              options?.memo,
+              options?.funds
+            );
           }
         }
       });

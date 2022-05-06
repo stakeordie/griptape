@@ -2,6 +2,7 @@ import {
   CosmWasmClient,
   SigningCosmWasmClient
 } from "@cosmjs/cosmwasm-stargate";
+import { GasPrice } from "@cosmjs/stargate";
 import { OfflineSigner, AccountData } from "@cosmjs/proto-signing";
 import { Keplr } from "@keplr-wallet/types";
 
@@ -44,11 +45,13 @@ export async function initApp(
   let account: AccountData | undefined;
   if (signer) {
     account = (await signer.getAccounts())[0];
+
     signingClient = await SigningCosmWasmClient.connectWithSigner(
       rpcEndpoint,
       signer,
       {
-        prefix: config.prefix
+        prefix: config.prefix,
+        gasPrice: GasPrice.fromString("0.01ucosm")
       }
     );
   }

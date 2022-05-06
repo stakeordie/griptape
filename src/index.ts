@@ -1,10 +1,11 @@
 export { ExecuteResult } from "@cosmjs/cosmwasm-stargate";
 export {
-  OfflineSigner,
   AccountData,
   DirectSecp256k1HdWallet,
+  Coin,
   DirectSecp256k1Wallet,
-  DirectSecp256k1HdWalletOptions
+  DirectSecp256k1HdWalletOptions,
+  OfflineSigner
 } from "@cosmjs/proto-signing";
 
 export { Config, initApp, initKeplr } from "./bootstrap";
