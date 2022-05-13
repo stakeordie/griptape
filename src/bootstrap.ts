@@ -15,60 +15,63 @@ export interface Config {
 
 export class DApp {
   private config: Config;
+  private callEntryPoint: () => void = () => {};
   client: CosmWasmClient | undefined;
   signingClient: SigningCosmWasmClient | undefined;
   account: AccountData | undefined;
-  private entryPoint: (() => void) | undefined;
 
-  static from(config: Config) {
-    return new DApp(config);
-  }
-
-  protected constructor(config: Config) {
+  constructor(config: Config) {
     this.config = config;
   }
 
   setEntryPoint(entryPoint: () => void): DApp {
-    this.entryPoint = entryPoint;
+    this.callEntryPoint = entryPoint;
     return this;
   }
 
   connectWithMnemonic(mnemonic: string): void {
     const { rpcEndpoint, prefix } = this.config;
-    CosmWasmClient.connect(rpcEndpoint)
-      .then(client => {
-        this.client = client;
-        return DirectSecp256k1HdWallet.fromMnemonic(mnemonic, { prefix });
-      })
-      .then(signer => {
-        const accountsPromise = signer.getAccounts();
-        const signerPromise = Promise.resolve(signer);
-        return Promise.all([signerPromise, accountsPromise]);
-      })
-      .then(promises => {
-        const [signer, [account]] = promises;
-        this.account = account;
-        const gasPrice = GasPrice.fromString("0.01ucosm");
-        return SigningCosmWasmClient.connectWithSigner(rpcEndpoint, signer, {
-          prefix,
-          gasPrice
-        });
-      })
-      .then(signingClient => (this.signingClient = signingClient))
-      .finally(() => {
-        if (this.entryPoint) this.entryPoint();
+
+    const setupClient = (client: CosmWasmClient) => {
+      this.client = client;
+      return DirectSecp256k1HdWallet.fromMnemonic(mnemonic, { prefix });
+    };
+
+    const setupSigner = (signer: OfflineSigner) => {
+      const accountsPromise = signer.getAccounts();
+      const signerPromise = Promise.resolve(signer);
+      return Promise.all([signerPromise, accountsPromise]);
+    };
+
+    const setupAccount = (
+      promises: [OfflineSigner, readonly AccountData[]]
+    ) => {
+      const [signer, [account]] = promises;
+      this.account = account;
+      const gasPrice = GasPrice.fromString("0.01ucosm");
+      return SigningCosmWasmClient.connectWithSigner(rpcEndpoint, signer, {
+        prefix,
+        gasPrice
       });
+    };
+
+    const setupSigningClient = (signingClient: SigningCosmWasmClient) =>
+      (this.signingClient = signingClient);
+
+    CosmWasmClient.connect(rpcEndpoint)
+      .then(setupClient)
+      .then(setupSigner)
+      .then(setupAccount)
+      .then(setupSigningClient)
+      .finally(this.callEntryPoint);
   }
 
   connect(): void {
     const { rpcEndpoint } = this.config;
+
     CosmWasmClient.connect(rpcEndpoint)
-      .then(client => {
-        this.client = client;
-      })
-      .finally(() => {
-        if (this.entryPoint) this.entryPoint();
-      });
+      .then(client => (this.client = client))
+      .finally(this.callEntryPoint);
   }
 }
 
@@ -82,10 +85,11 @@ export function useDApp() {
 /**
  * Creates a new dApp.
  * @param config A configuration object.
- * @returns DApp
+ * @returns DApp.
  */
 export function createDApp(config: Config): DApp {
-  dApp = DApp.from(config);
+  if (dApp) throw new Error("Only one DApp instance is allowed.");
+  dApp = new DApp(config);
   return dApp;
 }
 
