@@ -1,5 +1,5 @@
 import { Coin } from "@cosmjs/proto-signing";
-import { useAppContext } from "./bootstrap";
+import { useDApp } from "./bootstrap";
 
 export interface ContractContext {
   address?: string;
@@ -117,7 +117,7 @@ export function createContractClient<T extends BaseContract>(
         return at;
       }
 
-      const isQuery = () => Object.keys(queries).includes(prop as string);
+      const isQuery = () => Object.keys(queries).includes(prop.toString());
       const isMessage = () => !isQuery();
 
       return new Proxy<ContractFunction>(def[prop as string], {
@@ -126,14 +126,19 @@ export function createContractClient<T extends BaseContract>(
           const args = [context, argArray[0] as ContractFunctionParams];
           const msg = Reflect.apply(fun, thisArg, args);
 
-          const { client, signingClient } = useAppContext();
+          const dApp = useDApp();
 
           if (isQuery()) {
-            return client.queryContractSmart(at, msg);
+            if (!dApp.client)
+              throw new Error("No client is available to execute query");
+
+            return dApp.client.queryContractSmart(at, msg);
           } else if (isMessage()) {
-            if (!context.address) throw new Error("No address available");
+            if (!dApp.signingClient || !context.address)
+              throw new Error("No client is available to execute message");
+
             const options: ContractExecutionOptions | undefined = argArray[1];
-            return signingClient?.execute(
+            return dApp.signingClient.execute(
               context.address,
               at,
               msg,
@@ -151,6 +156,6 @@ export function createContractClient<T extends BaseContract>(
 }
 
 function getContractContext(): ContractContext {
-  const { account } = useAppContext();
+  const { account } = useDApp();
   return { address: account?.address };
 }

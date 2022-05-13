@@ -2,6 +2,7 @@ import {
   CosmWasmClient,
   SigningCosmWasmClient
 } from "@cosmjs/cosmwasm-stargate";
+import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
 import { GasPrice } from "@cosmjs/stargate";
 import { OfflineSigner, AccountData } from "@cosmjs/proto-signing";
 import { Keplr } from "@keplr-wallet/types";
@@ -12,68 +13,80 @@ export interface Config {
   prefix: string;
 }
 
-export class AppContext {
-  config: Config;
-  client: CosmWasmClient;
-  signingClient?: SigningCosmWasmClient;
-  account?: AccountData;
+export class DApp {
+  private config: Config;
+  client: CosmWasmClient | undefined;
+  signingClient: SigningCosmWasmClient | undefined;
+  account: AccountData | undefined;
+  private entryPoint: (() => void) | undefined;
 
-  constructor(
-    config: Config,
-    client: CosmWasmClient,
-    signingClient?: SigningCosmWasmClient,
-    account?: AccountData
-  ) {
+  static from(config: Config) {
+    return new DApp(config);
+  }
+
+  protected constructor(config: Config) {
     this.config = config;
-    this.client = client;
-    this.signingClient = signingClient;
-    this.account = account;
+  }
+
+  setEntryPoint(entryPoint: () => void): DApp {
+    this.entryPoint = entryPoint;
+    return this;
+  }
+
+  connectWithMnemonic(mnemonic: string): void {
+    const { rpcEndpoint, prefix } = this.config;
+    CosmWasmClient.connect(rpcEndpoint)
+      .then(client => {
+        this.client = client;
+        return DirectSecp256k1HdWallet.fromMnemonic(mnemonic, { prefix });
+      })
+      .then(signer => {
+        const accountsPromise = signer.getAccounts();
+        const signerPromise = Promise.resolve(signer);
+        return Promise.all([signerPromise, accountsPromise]);
+      })
+      .then(promises => {
+        const [signer, [account]] = promises;
+        this.account = account;
+        const gasPrice = GasPrice.fromString("0.01ucosm");
+        return SigningCosmWasmClient.connectWithSigner(rpcEndpoint, signer, {
+          prefix,
+          gasPrice
+        });
+      })
+      .then(signingClient => (this.signingClient = signingClient))
+      .finally(() => {
+        if (this.entryPoint) this.entryPoint();
+      });
+  }
+
+  connect(): void {
+    const { rpcEndpoint } = this.config;
+    CosmWasmClient.connect(rpcEndpoint)
+      .then(client => {
+        this.client = client;
+      })
+      .finally(() => {
+        if (this.entryPoint) this.entryPoint();
+      });
   }
 }
 
-let appContext: AppContext | undefined;
+let dApp: DApp | undefined;
 
-export async function initApp(
-  config: Config,
-  signer?: OfflineSigner
-): Promise<void> {
-  const { rpcEndpoint } = config;
-
-  const client = await CosmWasmClient.connect(rpcEndpoint);
-
-  let signingClient: SigningCosmWasmClient | undefined;
-  let account: AccountData | undefined;
-  if (signer) {
-    account = (await signer.getAccounts())[0];
-
-    signingClient = await SigningCosmWasmClient.connectWithSigner(
-      rpcEndpoint,
-      signer,
-      {
-        prefix: config.prefix,
-        gasPrice: GasPrice.fromString("0.01ucosm")
-      }
-    );
-  }
-
-  appContext = new AppContext(config, client, signingClient, account);
+export function useDApp() {
+  if (!dApp) throw new Error("No DApp has been created");
+  return dApp;
 }
 
-export function useAppContext(): AppContext {
-  if (!appContext)
-    throw new Error(
-      "App context has not been initialized: have you execute `initApp`?"
-    );
-  return appContext;
-}
-
-export async function initKeplr({
-  chainId
-}: Config): Promise<OfflineSigner | undefined> {
-  const keplr = await getKeplr();
-  if (!keplr) return;
-  await keplr.enable(chainId);
-  return keplr.getOfflineSignerAuto(chainId);
+/**
+ * Creates a new dApp.
+ * @param config A configuration object.
+ * @returns DApp
+ */
+export function createDApp(config: Config): DApp {
+  dApp = DApp.from(config);
+  return dApp;
 }
 
 async function getKeplr(): Promise<Keplr | undefined> {
