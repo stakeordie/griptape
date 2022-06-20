@@ -14,7 +14,7 @@
   "scripts": {
     "build": "tsc",
     "test": "jest",
-    "format": "prettier --ignore-path .gitignore --write \"**/*.+(js|ts|json)\""
+    "lint": "eslint --fix"
   },
   "dependencies": {
     "@cosmjs/cosmwasm-stargate": "^0.28.4",
