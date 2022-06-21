@@ -12,6 +12,8 @@ export { createDApp } from "./setup";
 
 export { Config } from "./types";
 
+export { withKeplr } from "./keplr";
+
 export {
   BaseContract,
   ContractContext,

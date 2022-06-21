@@ -1,6 +1,7 @@
 import { Keplr } from "@keplr-wallet/types";
 import EventEmitter from "events";
 import { Config } from "./types";
+import { useDApp } from "./setup";
 
 export type { Keplr } from "@keplr-wallet/types";
 
@@ -78,4 +79,9 @@ export class KeplrWrapper {
     if (!this.keplr) throw new Error("Keplr is not installed");
     return this.keplr;
   }
+}
+
+export function withKeplr(): KeplrWrapper {
+  const dapp = useDApp();
+  return dapp.keplr;
 }
