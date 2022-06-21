@@ -1,5 +1,5 @@
 import { Coin } from "@cosmjs/proto-signing";
-import { useDApp } from "./bootstrap";
+import { useDApp } from "./setup";
 
 export interface ContractContext {
   address?: string;

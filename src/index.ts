@@ -8,7 +8,9 @@ export {
   OfflineSigner
 } from "@cosmjs/proto-signing";
 
-export { Config, createDApp } from "./bootstrap";
+export { createDApp } from "./setup";
+
+export { Config } from "./types";
 
 export {
   BaseContract,

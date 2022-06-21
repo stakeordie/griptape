@@ -5,14 +5,8 @@ import {
 import { DirectSecp256k1HdWallet } from "@cosmjs/proto-signing";
 import { GasPrice } from "@cosmjs/stargate";
 import { OfflineSigner, AccountData } from "@cosmjs/proto-signing";
-import { Keplr } from "@keplr-wallet/types";
-import { getKeplr } from "./keplr";
-
-export interface Config {
-  chainId: string;
-  rpcEndpoint: string;
-  prefix: string;
-}
+import { KeplrWrapper } from "./keplr";
+import { Config } from "./types";
 
 export class DApp {
   private config: Config;
@@ -20,9 +14,11 @@ export class DApp {
   client: CosmWasmClient | undefined;
   signingClient: SigningCosmWasmClient | undefined;
   account: AccountData | undefined;
+  keplr: KeplrWrapper;
 
   constructor(config: Config) {
     this.config = config;
+    this.keplr = new KeplrWrapper(config);
   }
 
   setEntryPoint(entryPoint: () => void): DApp {
@@ -57,19 +53,18 @@ export class DApp {
   connectWithKeplr(): void {
     const { rpcEndpoint, chainId } = this.config;
 
-    const setupClient = (client: CosmWasmClient) => {
+    const setupClientAndApp = (client: CosmWasmClient) => {
       this.client = client;
-      return getKeplr();
+      this.callEntryPoint();
+      return this.keplr.connect();
     };
 
-    const setupKeplr = (keplr: Keplr | undefined) => {
-      if (!keplr) throw new Error("Keplr is not installed");
-      return keplr.getOfflineSignerAuto(chainId);
+    const setupKeplr = (keplr: KeplrWrapper) => {
+      return keplr.unwrap().getOfflineSignerAuto(chainId);
     };
 
     CosmWasmClient.connect(rpcEndpoint)
-      .then(setupClient)
-      .finally(this.callEntryPoint)
+      .then(setupClientAndApp)
       .then(setupKeplr)
       .then(this.setupSigner.bind(this))
       .then(this.setupAccount.bind(this))
@@ -96,22 +91,4 @@ export class DApp {
   private setupSigningClient(signingClient: SigningCosmWasmClient) {
     this.signingClient = signingClient;
   }
-}
-
-let dApp: DApp | undefined;
-
-export function useDApp() {
-  if (!dApp) throw new Error("No DApp has been created");
-  return dApp;
-}
-
-/**
- * Creates a new dApp.
- * @param config A configuration object.
- * @returns DApp.
- */
-export function createDApp(config: Config): DApp {
-  if (dApp) throw new Error("Only one DApp instance is allowed.");
-  dApp = new DApp(config);
-  return dApp;
 }
