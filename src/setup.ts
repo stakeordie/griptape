@@ -20,7 +20,7 @@ export function useDApp() {
  * @returns DApp.
  */
 export function createDApp(config: Config): DApp {
-  if (dApp) throw new Error("Only one instance of a DApp is allowed");
+  if (dApp) return dApp;
   dApp = new DApp(config);
   return dApp;
 }

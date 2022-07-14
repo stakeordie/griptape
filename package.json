@@ -1,5 +1,5 @@
 {
-  "name": "griptape",
+  "name": "@stakeordie/griptape",
   "version": "0.1.0",
   "description": "Frontend framework for CosmWasm",
   "main": "dist/index.js",

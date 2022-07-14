@@ -9,7 +9,7 @@ export type ContractFunctionParams = Record<string, unknown>;
 
 export type ContractFunction = (
   context: ContractContext,
-  params?: ContractFunctionParams
+  params: ContractFunctionParams
 ) => Record<string, Record<string, unknown>>;
 
 export interface ContractDefinition {
@@ -123,7 +123,7 @@ export function createContractClient<T extends BaseContract>(
       return new Proxy<ContractFunction>(def[prop as string], {
         apply(fun, thisArg, argArray) {
           const context = getContractContext();
-          const args = [context, argArray[0] as ContractFunctionParams];
+          const args = [context, argArray[0] as ContractFunctionParams || {}];
           const msg = Reflect.apply(fun, thisArg, args);
 
           const dApp = useDApp();

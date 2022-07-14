@@ -6,6 +6,8 @@ import { useDApp } from "./setup";
 export type { Keplr } from "@keplr-wallet/types";
 
 export async function getKeplr(): Promise<Keplr | undefined> {
+  if (typeof window === 'undefined') return;
+
   if (window.keplr) {
     return window.keplr;
   }
@@ -40,13 +42,14 @@ export class KeplrWrapper {
     this.config = config;
   }
 
-  private async setupKeplr() {
+  async connect() {
     const keplr = await getKeplr();
     if (!keplr) throw new Error("Keplr is not installed");
     if (!this.isConnected()) {
       await keplr.enable(this.config.chainId);
     }
     this.keplr = keplr;
+    return this;
   }
 
   isConnected(): boolean {
@@ -55,10 +58,16 @@ export class KeplrWrapper {
 
   onConnect(fn: () => void) {
     this.emitter.on("connect", fn);
+    return () => {
+      this.emitter.removeListener("connect", fn);
+    };
   }
 
   onDisconnect(fn: () => void) {
     this.emitter.on("disconnect", fn);
+    return () => {
+      this.emitter.removeListener("disconnect", fn);
+    };
   }
 
   onConnectAndLoad(fn: () => void) {
@@ -67,12 +76,14 @@ export class KeplrWrapper {
     } else {
       this.emitter.on("connect", fn);
     }
+    return () => {
+      this.emitter.removeListener("connect", fn);
+    };
   }
-
-  async connect(): Promise<KeplrWrapper> {
-    await this.setupKeplr();
+  
+  setConnected() {
+    this.connected = true;
     this.emitter.emit("connect");
-    return this;
   }
 
   unwrap(): Keplr {

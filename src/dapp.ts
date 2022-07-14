@@ -68,7 +68,8 @@ export class DApp {
       .then(setupKeplr)
       .then(this.setupSigner.bind(this))
       .then(this.setupAccount.bind(this))
-      .then(this.setupSigningClient.bind(this));
+      .then(this.setupSigningClient.bind(this))
+      .then(() => this.keplr.setConnected());
   }
 
   private setupSigner(signer: OfflineSigner) {
